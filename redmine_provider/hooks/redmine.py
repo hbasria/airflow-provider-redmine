@@ -7,7 +7,7 @@ from airflow.exceptions import AirflowException
 from airflow.hooks.base import BaseHook
 
 
-class BaserowHook(BaseHook):
+class RedmineHook(BaseHook):
     conn_name_attr = "redmine_conn_id"
     default_conn_name = "redmine_default"
     conn_type = "redmine"
@@ -17,10 +17,11 @@ class BaserowHook(BaseHook):
                  redmine_conn_id: str = default_conn_name, 
                  **kwargs):
         super().__init__()
+        self.redmine_conn_id = redmine_conn_id
         self.connection = self.get_connection(redmine_conn_id)
 
         
-    def _get_baserow_connection(self, url: str, key: str):
+    def _get_redmine_connection(self, url: str, key: str):
         return Redmine(url, key=key)  
 
     @cached_property
@@ -32,15 +33,14 @@ class BaserowHook(BaseHook):
         conn = self.get_connection(conn_id)
 
         conn.extra = None 
-        token = conn.get_password()
-        uri = conn.get_uri()
-        uri = uri.replace(f":{token}@", "")
+        url = conn.host
+        key = conn.get_password()
 
-        return self._get_baserow_connection(url=uri, token=token)
+        return self._get_redmine_connection(url=url, key=key)
 
-    def get_baserow_table_rows(self, table_id: int, filter: list | None = None):
-        """Returns the Baserow table rows."""
-        return self.get_conn.list_database_table_rows(table_id, filter=filter)
+    def get_redmine_issues(self, project_id: str, **kwargs):
+        return self.get_conn.issue.filter(project_id=project_id, **kwargs)
+
     
-    def update_baserow_table_row(self, table_id: int, row_id: int, record: Dict[str, Any]) -> Dict[str, Any]:
-        return self.get_conn.update_database_table_row(table_id, row_id, record=record)
+    def update_redmine_issue(self, id: int, **kwargs):
+        return self.get_conn.issue.update(id, **kwargs)
